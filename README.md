@@ -281,6 +281,7 @@ Output of `npm run example`:
 
 - **Cancellation is cooperative.** JavaScript can't kill a running function. Work stops only where you pass `signal`, use `race()`/`fetch()`, or call `throwIfExpired()`. Code that ignores these keeps running in the background, even though the caller has already received a 504.
 - **Don't respond after a 504.** Once the middleware has replied, writing to `res` again throws `ERR_HTTP_HEADERS_SENT`. Check `req.deadline.expired`, or catch `DeadlineExceededError`, before you respond.
+- **A downstream 504 is a normal response.** If the downstream service runs out of time first (it usually does, since it got a smaller budget), `req.deadline.fetch()` *resolves* with that service's `504` response; it rejects with `DeadlineExceededError` only when *your* deadline fires first. Check `response.status` as you would with plain `fetch`. Setting a `reserve` gives you time to reply after the downstream gives up.
 - **Both sides must take part.** Downstream services need this middleware, or must read the header some other way, for the budget to keep travelling. Other services simply ignore the header.
 - **The header is not a standard.** `x-request-timeout-ms` is a convention of this package. Use the `header` option to match an existing convention in your system.
 - **Trust at the edge.** A public client can send any budget. Use `max`, or `trustIncoming: false`, on internet-facing services.
