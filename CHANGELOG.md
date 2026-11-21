@@ -6,6 +6,17 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-21
+
+### Fixed
+
+- Made the downstream-timeout tests reliable on slow CI machines.
+
+### Documentation
+
+- Explained that `deadline.fetch()` returns a downstream 504 as a normal
+  response, and rejects only when your own deadline fires first.
+
 ## [1.0.0] - 2026-11-21
 
 ### Added
@@ -21,5 +32,6 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `DeadlineExceededError` and `CancelledError`, each with a stable `code`.
 - `parseBudget()`, `respondGatewayTimeout()`, `DEFAULT_HEADER` and `MAX_BUDGET`.
 
-[Unreleased]: https://github.com/anshikaahuja19/deadline-relay/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/anshikaahuja19/deadline-relay/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/anshikaahuja19/deadline-relay/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/anshikaahuja19/deadline-relay/releases/tag/v1.0.0
