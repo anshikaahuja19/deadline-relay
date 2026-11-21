@@ -1,0 +1,49 @@
+{
+  "name": "deadline-relay",
+  "version": "1.0.0",
+  "description": "Propagate request deadlines across HTTP services. Express/Node middleware plus a deadline-aware fetch, so downstream calls stop when the caller has already given up.",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:coverage": "node --test --experimental-test-coverage test/*.test.js",
+    "example": "node examples/microservices.js",
+    "prepublishOnly": "npm test"
+  },
+  "keywords": [
+    "deadline",
+    "timeout",
+    "deadline-propagation",
+    "abortsignal",
+    "abortcontroller",
+    "cancellation",
+    "express",
+    "middleware",
+    "microservices",
+    "fetch",
+    "http"
+  ],
+  "author": "Anshika Ahuja",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anshikaahuja19/deadline-relay.git"
+  },
+  "bugs": {
+    "url": "https://github.com/anshikaahuja19/deadline-relay/issues"
+  },
+  "homepage": "https://github.com/anshikaahuja19/deadline-relay#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false
+}
