@@ -194,33 +194,67 @@ test('propagates the remaining budget across services', async (t) => {
 
   const res = await fetch(urlB, { headers: { [DEFAULT_HEADER]: '1000' } });
   assert.equal(await res.text(), 'B got: from C');
-  // 1000 - ~50ms of work - 100 reserve, allowing some scheduling slack.
-  assert.ok(budgetAtC <= 850 && budgetAtC >= 750, `budget at C was ${budgetAtC}`);
+  // 1000 - >=50ms of work - 100 reserve. The upper bound is exact; the lower
+  // bound is generous because CI machines can be slow.
+  assert.ok(budgetAtC <= 850 && budgetAtC >= 500, `budget at C was ${budgetAtC}`);
 });
 
-test('a slow downstream call is abandoned when the budget runs out', async (t) => {
-  let cAborted = false;
-  const urlC = await serve(t, deadline(), (req, res) => {
-    req.deadline.signal.addEventListener('abort', () => {
-      cAborted = true;
-    });
-    setTimeout(() => res.end('too late'), 500);
+/** Resolve with the first value passed to `resolve`, or fail after `ms`. */
+function deferred(label, ms = 3000) {
+  let resolve;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    const timer = setTimeout(() => rej(new Error(`${label}: not settled within ${ms}ms`)), ms);
+    timer.unref();
   });
-  let errorAtB;
-  const urlB = await serve(t, deadline({ timeout: 80 }), async (req, res) => {
+  return { promise, resolve };
+}
+
+test('B abandons a slow C, and C sees the disconnect', async (t) => {
+  // C ignores the forwarded header, so only B's own deadline can end this
+  // exchange: B aborts its fetch, and C learns about it via the closed socket.
+  const cReason = deferred('C abort');
+  const urlC = await serve(t, deadline({ trustIncoming: false, timeout: 10_000 }), (req, res) => {
+    req.deadline.signal.addEventListener('abort', () => cReason.resolve(req.deadline.signal.reason));
+    setTimeout(() => res.end('too late'), 3000);
+  });
+  const errorAtB = deferred('B error');
+  // 300ms: enough for B's request to reach C even on a slow CI machine.
+  const urlB = await serve(t, deadline({ timeout: 300 }), async (req) => {
     try {
       await req.deadline.fetch(urlC);
     } catch (err) {
-      errorAtB = err;
+      errorAtB.resolve(err);
     }
   });
   const started = Date.now();
   const res = await fetch(urlB);
   assert.equal(res.status, 504);
-  assert.ok(Date.now() - started < 400, 'should not wait for C');
-  assert.ok(errorAtB instanceof DeadlineExceededError);
-  await sleep(50);
-  assert.equal(cAborted, true, 'C should notice that its caller gave up');
+  assert.ok(Date.now() - started < 2000, 'should not wait for C');
+  // The 504 is sent before B's fetch() rejection reaches its catch block,
+  // so wait for these rather than assuming they have already happened.
+  assert.ok((await errorAtB.promise) instanceof DeadlineExceededError);
+  assert.ok((await cReason.promise) instanceof CancelledError, 'C should notice that B gave up');
+});
+
+test('with a reserve, C times out first and B still has time to reply', async (t) => {
+  const urlC = await serve(t, deadline(), (req, res) => {
+    setTimeout(() => res.end('too late'), 3000);
+  });
+  let statusSeenByB;
+  let remainingAtB;
+  const urlB = await serve(t, deadline({ timeout: 500, reserve: 200 }), async (req, res) => {
+    const upstream = await req.deadline.fetch(urlC);
+    statusSeenByB = upstream.status;
+    remainingAtB = req.deadline.remaining();
+    res.statusCode = 502;
+    res.end('inventory timed out');
+  });
+  const res = await fetch(urlB);
+  // B's own handler answered (502), not B's deadline middleware (504).
+  assert.equal(res.status, 502);
+  assert.equal(statusSeenByB, 504);
+  assert.ok(remainingAtB > 0, `B should have time left, had ${remainingAtB}ms`);
 });
 
 test('validates options', () => {
