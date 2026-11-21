@@ -1,6 +1,6 @@
 {
   "name": "deadline-relay",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Propagate request deadlines across HTTP services. Express/Node middleware plus a deadline-aware fetch, so downstream calls stop when the caller has already given up.",
   "main": "src/index.js",
   "exports": {
